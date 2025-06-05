@@ -1,0 +1,490 @@
+# ================================
+# Archives & Compression
+# ================================
+
+# ** Compress a directory into a tar.gz archive **
+
+compress_dir() {
+  if [ -z "$1" ] || [ ! -d "$1" ]; then
+    echo "Usage: compress_dir <directory>"
+    echo "Compress a directory to a tar.gz archive named <directory>.tar.gz"
+    return 1
+  fi
+
+  tar -czvf "$1.tar.gz" "$1"
+}
+
+# ** Extracts various archive formats **
+
+extract() {
+  if [ -z "$1" ]; then
+    echo "Usage: extract <archive>"
+    echo "Extracts supported formats."
+    echo "Supported: .7z .rar .tar .tar.gz .tar.bz2 .zip"
+    return 1
+  fi
+
+  local archive="$1"
+  local base
+  local dest
+
+  if [ ! -f "$archive" ]; then
+    echo "Error: '$archive' is not a valid file"
+    return 1
+  fi
+
+  base=$(basename "$archive")
+  base="${base%.*}"
+  base="${base%.tar}"
+  dest="./$base"
+
+  mkdir -p "$dest" || {
+    echo "Failed to create directory: $dest"
+    return 1
+  }
+
+  case "$archive" in
+    *.7z)      7z x "$archive" -o"$dest" ;;
+    *.rar)     unrar x "$archive" "$dest" ;;
+    *.tar)     tar -xf "$archive" -C "$dest" ;;
+    *.tar.bz2) tar -xjf "$archive" -C "$dest" ;;
+    *.tar.gz)  tar -xzf "$archive" -C "$dest" ;;
+    *.zip)     unzip -d "$dest" "$archive" ;;
+    *)
+      echo "Unsupported archive format: $archive"
+      return 1
+      ;;
+  esac
+
+  if [ $? -eq 0 ]; then
+    echo "Successfully extracted to '$dest'"
+  else
+    echo "Error occurred while extracting '$archive'"
+    return 1
+  fi
+}
+
+# ** Create encrypted zip archive **
+
+zip_encrypt() {
+  if [ "$#" -lt 2 ]; then
+    echo "Usage: zip_encrypt [-k] <archive> <file_or_dir1> <file_or_dir2> ..."
+    echo "Create encrypted zip archive (default: remove original files/directories)."
+    echo "-k: Keep original files/directories after successful archive creation."
+    return 1
+  fi
+
+  local keep_originals=0
+  if [ "$1" = "-k" ]; then
+    keep_originals=1
+    shift
+  fi
+
+  local archive_name="$1"
+  shift
+
+  echo "Creating encrypted zip archive '$archive_name.zip' with: $@"
+
+  if zip -r -e "$archive_name.zip" "$@" ; then
+    echo "Encrypted zip archive '$archive_name.zip' created successfully."
+
+    if [ "$keep_originals" -eq 0 ]; then
+      echo "Removing source files/directories..."
+
+      local failed=0
+      for item in "$@"; do
+        if [ ! -w "$item" ] || [ ! -w "$(dirname "$item")" ]; then
+          echo "Warning: Insufficient permissions to delete '$item'. Try using sudo manually."
+          failed=1
+        else
+          rm -rf "$item" || { echo "Warning: Failed to remove '$item'."; failed=1; }
+        fi
+      done
+
+      if [ "$failed" -eq 0 ]; then
+        echo "Source files/directories removed."
+      else
+        echo "Some files/directories were not removed due to permission issues."
+      fi
+    else
+      echo "Keeping original files/directories."
+    fi
+  else
+    echo "Error: Failed to create encrypted zip archive."
+    return 1
+  fi
+}
+
+# ** Decrypt and extract a zip archive **
+
+zip_decrypt() {
+  if [ "$#" -lt 1 ] || [ "$#" -gt 2 ]; then
+    echo "Usage: zip_decrypt [-k] <archive>.zip"
+    echo "Decrypt and extract a zip archive  (default: remove archive)."
+    echo "-k: Keep the archive after successful extraction."
+    return 1
+  fi
+
+  local keep_archive=0
+  if [ "$1" = "-k" ]; then
+    keep_archive=1
+    shift
+  fi
+
+  local archive_name="$1"
+
+  if [ ! -f "$archive_name" ]; then
+    echo "Error: '$archive_name' does not exist."
+    return 1
+  fi
+
+  echo "Decrypting zip archive '$archive_name'..."
+
+  if unzip "$archive_name"; then
+    echo "Decryption and extraction of '$archive_name' successful."
+
+    if [ "$keep_archive" -eq 0 ]; then
+      echo "Removing source archive '$archive_name'..."
+      rm -f "$archive_name"
+      echo "Source archive '$archive_name' removed."
+    else
+      echo "Keeping source archive '$archive_name'."
+    fi
+  else
+    echo "Error: Failed to decrypt or extract '$archive_name'."
+    return 1
+  fi
+}
+
+# ================================
+# Development & Utilities
+# ================================
+
+# ** Convert images to specified format with optional resizing and quality settings **
+
+convert_images() {
+  if [[ $# -lt 2 ]]; then
+    echo "Usage: convert_images <output_format> <output_dir> [resize_max_dimension] [quality]"
+    echo
+    echo "Examples:"
+    echo "convert_images jpg jpg"
+    echo "convert_images jpg jpg-2400 2400"
+    echo "convert_images jpg jpg-2400q80 2400 80"
+    echo "convert_images jpg jpg-q80 \"\" 50"
+    return 1
+  fi
+
+  # Check for ImageMagick (v7+) with 'magick'
+  if ! command -v magick >/dev/null 2>&1; then
+    echo "Error: ImageMagick (v7+) is not installed or 'magick' command not found."
+    echo "Install it via Homebrew: brew install imagemagick"
+    return 1
+  fi
+
+  local out_format=$1
+  local out_dir=$2
+  local resize=$3
+  local quality=$4
+
+  local exts=(jpg jpeg png webp avif)
+  local files=()
+
+  # Gather all matching files first
+  for ext in $exts; do
+    for file in ./*.$ext(.N); do
+      [[ -f $file ]] && files+=("$file")
+    done
+  done
+
+  if (( ${#files[@]} == 0 )); then
+    echo "Error: No images found."
+    return 1
+  fi
+
+  # Create output directory only now
+  mkdir -p "$out_dir"
+
+  local converted=0
+  local failed=0
+
+  for file in "${files[@]}"; do
+    local base="${file:t:r}"
+    local out_file="$out_dir/${base}.${out_format}"
+
+    echo "Converting '$file' -> '$out_file'"
+
+    local args=()
+    [[ -n $resize ]] && args+=(-resize "${resize}x${resize}>")
+
+    if [[ -n $quality && ( $out_format == "jpg" || $out_format == "jpeg" || $out_format == "webp" ) ]]; then
+      if magick "$file" "${args[@]}" -quality "$quality" "$out_file"; then
+        ((converted++))
+      else
+        echo "Failed to convert '$file'"
+        ((failed++))
+      fi
+    else
+      if magick "$file" "${args[@]}" "$out_file"; then
+        ((converted++))
+      else
+        echo "Failed to convert '$file'"
+        ((failed++))
+      fi
+    fi
+  done
+
+  echo
+
+  if ((converted > 0)); then
+    echo "Converted $converted image(s) to '$out_dir/'"
+  fi
+
+  if ((failed > 0)); then
+    echo "Warning: Failed to convert $failed image(s)"
+  fi
+
+  if ((converted == 0)); then
+    echo "Error: No images converted."
+    return 1
+  fi
+}
+
+# ** Countdown timer that counts down seconds and displays time remaining **
+
+countdown() {
+  if [ -z "$1" ] || ! [[ "$1" =~ ^[0-9]+$ ]]; then
+    echo "Usage: countdown <seconds>"
+    return 1
+  fi
+
+  local seconds=$1
+  while [ $seconds -ge 0 ]; do
+    printf "\rTime remaining: %d\033[0K" "$seconds"
+    sleep 1
+    : $((seconds--))
+  done
+  echo -e "\nTime's up!"
+}
+
+# **Sync two folders interactively with rsync **
+
+rs() {
+  if [ $# -ne 2 ]; then
+    echo "Usage: rs <source_folder> <destination_folder>"
+    echo "Sync two folders interactively with rsync and confirmation prompt."
+    return 1
+  fi
+
+  local src="$1"
+  local dest="$2"
+
+  # Ensure source exists
+  if [ ! -d "$src" ]; then
+    echo "Error: Source directory '$src' does not exist."
+    return 1
+  fi
+
+  # Ensure destination exists
+  if [ ! -d "$dest" ]; then
+    echo "Error: Destination directory '$dest' does not exist."
+    return 1
+  fi
+
+  # Prompt for confirmation
+  echo "Syncing from '$src' to '$dest'."
+  echo -n "Are you sure you want to proceed? (y/N): "
+  read confirm
+
+  if [[ "$confirm" != "y" && "$confirm" != "Y" ]]; then
+    echo "Operation canceled."
+    return 1
+  fi
+
+  # Run rsync
+  echo "Starting sync..."
+  rsync -av --progress --exclude ".*" "$src" "$dest"
+}
+
+# ================================
+# File Operations
+# ================================
+
+# ** Search for directories by name pattern in the current directory **
+
+fdir() {
+  local case_insensitive=0
+  local pattern=""
+  local results
+
+  # Check for -i flag
+  if [ "$1" = "-i" ]; then
+    case_insensitive=1
+    shift
+  fi
+
+  if [ -z "$1" ]; then
+    echo "Usage: fdir [-i] <pattern>"
+    echo "Searches for directories by name pattern in the current directory."
+    echo "-i: Case-insensitive search"
+    return 1
+  fi
+
+  pattern="$1"
+
+  if [ "$case_insensitive" -eq 1 ]; then
+    results=$(find . -type d -iname "$pattern" 2>/dev/null)
+  else
+    results=$(find . -type d -name "$pattern" 2>/dev/null)
+  fi
+
+  if [ -z "$results" ]; then
+    echo "No directories found matching '$pattern'."
+    return 1
+  fi
+
+  echo "$results"
+}
+
+# ** Search for files by name pattern, optionally case-insensitive, in the current directory **
+
+ff() {
+  local case_insensitive=0
+  local pattern=""
+  local results
+
+  # Check for -i flag
+  if [ "$1" = "-i" ]; then
+    case_insensitive=1
+    shift
+  fi
+
+  if [ -z "$1" ]; then
+    echo "Usage: ff [-i] <filename_pattern>"
+    echo "Searches for files by name pattern in the current directory."
+    echo "-i: Case-insensitive search"
+    return 1
+  fi
+
+  pattern="$1"
+
+  if [ "$case_insensitive" -eq 1 ]; then
+    results=$(find . -type f -iname "$pattern" 2>/dev/null)
+  else
+    results=$(find . -type f -name "$pattern" 2>/dev/null)
+  fi
+
+  if [ -z "$results" ]; then
+    echo "No files found matching '$pattern'."
+    return 1
+  fi
+
+  echo "$results"
+}
+
+# ** Delete files matching a given pattern recursively **
+
+remove_files() {
+  if [ -z "$1" ]; then
+    echo "Usage: remove_files <filename_pattern>"
+    echo "Deletes all files matching the pattern recursively from the current directory."
+    return 1
+  fi
+
+  find . -type f -name "$1" -print -delete
+}
+
+# ================================
+# Networking & Connectivity
+# ================================
+
+# ** Fetch HTTP headers from a given URL **
+
+check_headers() {
+  if [ -z "$1" ]; then
+    echo "Usage: check_headers <url>"
+    echo "Fetch HTTP response headers for the specified URL."
+    return 1
+  fi
+
+  curl -I "$1"
+}
+
+# ** Check SSL certificate details for a given host and port **
+
+check_ssl() {
+  if [ -z "$1" ]; then
+    echo "Usage: check_ssl <host> [port]"
+    echo "Check SSL certificate details for a given host and port (default port: 443)."
+    return 1
+  fi
+
+  local host="$1"
+  local port="${2:-443}"
+
+  local cert_info
+  cert_info=$(echo | openssl s_client -servername "$host" -connect "${host}:${port}" 2>/dev/null |
+    openssl x509 -noout -subject -issuer -dates)
+
+  local subject issuer not_before not_after
+  subject=$(echo "$cert_info" | grep "^subject=" | sed 's/subject=//')
+  issuer=$(echo "$cert_info" | grep "^issuer=" | sed 's/issuer=//')
+  not_before=$(echo "$cert_info" | grep "^notBefore=" | sed 's/notBefore=//')
+  not_after=$(echo "$cert_info" | grep "^notAfter=" | sed 's/notAfter=//')
+
+  echo "Subject     : $subject"
+  echo "Issuer      : $issuer"
+  echo "Valid from  : $not_before"
+  echo "Valid until : $not_after"
+
+  # Convert expiry to epoch and compare
+  local expiry_epoch now_epoch days_left
+  expiry_epoch=$(date -j -f "%b %d %T %Y %Z" "$not_after" +"%s")
+  now_epoch=$(date +"%s")
+  days_left=$(( (expiry_epoch - now_epoch) / 86400 ))
+
+  if [ "$days_left" -lt 0 ]; then
+    echo "Warning: Certificate has EXPIRED!"
+  elif [ "$days_left" -lt 30 ]; then
+    echo "Warning: Certificate will expire in $days_left days!"
+  else
+    echo "Certificate is valid for $days_left more days."
+  fi
+}
+
+# ** Query DNS records for a given domain or IPv4 address **
+
+dns() {
+  local domain=$1
+  if [ -z "$domain" ]; then
+    echo "Usage: dns <domain_or_ipv4>"
+    return 1
+  fi
+
+  if ! command -v dig >/dev/null 2>&1; then
+    echo "Error: dig command not found."
+    return 1
+  fi
+
+  printf "Querying DNS records for '%s'...\n\n" "$domain"
+
+  local record_types=("A" "AAAA" "MX" "CNAME" "NS" "TXT" "SOA" "SRV")
+  for type in "${record_types[@]}"; do
+    local output=$(dig +nocmd +noall +answer "$domain" "$type")
+    if [ -n "$output" ]; then
+      echo "## $type Records"
+      echo "$output"
+      echo ""
+    fi
+  done
+
+  # Handle reverse DNS (PTR) only if input is an IP address
+  if [[ "$domain" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    local reverse
+    reverse=$(dig +short -x "$domain")
+    if [ -n "$reverse" ]; then
+      echo "## PTR Record"
+      echo "$reverse"
+      echo ""
+    fi
+  fi
+}
