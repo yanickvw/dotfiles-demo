@@ -5,14 +5,6 @@
 SITE_DIR="<path/to/project>"   # Set root directory of project
 
 # ================================
-# Cloud Operations
-# ================================
-
-# Admin
-alias admin_pull='<path/to/script>'
-alias admin_push='<path/to/script>'
-
-# ================================
 # Development & Utilities
 # ================================
 
@@ -20,6 +12,11 @@ alias admin='code <path/to/directory>'   # Open admin directory in VS Code
 alias conf_backup='<path/to/script>'     # Run configuration backup script
 alias p10kconf='vim ~/.p10k.zsh'         # Edit Powerlevel10k config
 alias wttr='curl wttr.in/<location>'     # Weather info for <location>
+
+# Object Storage
+
+alias admin_pull='<path/to/script>'      # Run admin pull script
+alias admin_push='<path/to/script>'      # Run admin push script
 
 # ================================
 # File Operations
