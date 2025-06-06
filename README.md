@@ -2,7 +2,7 @@
 
 This repository contains example shell aliases and functions for demonstration purposes.
 It complements the blog article:
-[https://yanickvanweydeveldt.com/shell-aliases](https://yanickvanweydeveldt.com/shell-aliases)
+[https://yanickvanweydeveldt.com/shell-aliases-guide](https://yanickvanweydeveldt.com/shell-aliases-guide)
 
 **Disclaimer**: These configurations are provided as-is, without any warranty. Use at your own risk.
 
