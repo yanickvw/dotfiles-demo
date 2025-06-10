@@ -1,0 +1,615 @@
+# ================================
+# Development & Utilities
+# ================================
+
+edit_aliases() {
+  local file="$HOME/dotfiles/.aliases"
+
+  [ ! -f "$file" ] && mkdir -p "$HOME/dotfiles" && touch "$file"
+
+  if command -v apt >/dev/null 2>&1 && apt --version >/dev/null 2>&1; then
+    sudo vim "$file"
+  elif command -v brew >/dev/null 2>&1 && brew --version >/dev/null 2>&1; then
+    vim "$file"
+  else
+    echo "Unsupported or unknown environment." >&2
+    return 1
+  fi
+}
+
+edit_aliases_linux() {
+  local file="$HOME/dotfiles/.aliases-linux"
+
+  [ ! -f "$file" ] && mkdir -p "$HOME/dotfiles" && touch "$file"
+
+  if command -v apt >/dev/null 2>&1 && apt --version >/dev/null 2>&1; then
+    sudo vim "$file"
+  elif command -v brew >/dev/null 2>&1 && brew --version >/dev/null 2>&1; then
+    vim "$file"
+  else
+    echo "Unsupported or unknown environment." >&2
+    return 1
+  fi
+}
+
+edit_functions() {
+  local file="$HOME/dotfiles/.functions"
+
+  [ ! -f "$file" ] && mkdir -p "$HOME/dotfiles" && touch "$file"
+
+  if command -v apt >/dev/null 2>&1 && apt --version >/dev/null 2>&1; then
+    sudo vim "$file"
+  elif command -v brew >/dev/null 2>&1 && brew --version >/dev/null 2>&1; then
+    vim "$file"
+  else
+    echo "Unsupported or unknown environment." >&2
+    return 1
+  fi
+}
+
+edit_functions_linux() {
+  local file="$HOME/dotfiles/.functions-linux"
+
+  [ ! -f "$file" ] && mkdir -p "$HOME/dotfiles" && touch "$file"
+
+  if command -v apt >/dev/null 2>&1 && apt --version >/dev/null 2>&1; then
+    sudo vim "$file"
+  elif command -v brew >/dev/null 2>&1 && brew --version >/dev/null 2>&1; then
+    vim "$file"
+  else
+    echo "Unsupported or unknown environment." >&2
+    return 1
+  fi
+}
+
+sshconf() {
+  local editor="vim"
+  local user_ssh_config="$HOME/.ssh/config"
+  local system_ssh_config="/etc/ssh/sshd_config"
+
+  # Ensure ~/.ssh/config exists with correct permissions
+  if [ ! -f "$user_ssh_config" ]; then
+    mkdir -p "$HOME/.ssh"
+    touch "$user_ssh_config"
+    chmod 600 "$user_ssh_config"
+  fi
+
+  if command -v apt >/dev/null 2>&1 && apt --version >/dev/null 2>&1; then
+    sudo "$editor" "$system_ssh_config"
+  elif command -v brew >/dev/null 2>&1 && brew --version >/dev/null 2>&1; then
+    "$editor" "$user_ssh_config"
+  else
+    echo "Unsupported or unknown environment." >&2
+    return 1
+  fi
+}
+
+# ================================
+# File Operations
+# ================================
+
+# ** Create a backup of a file by copying it with a .bak extension **
+
+bak() {
+  if [ -z "$1" ]; then
+    echo "Usage: bak <filename>"
+    echo "Create a backup of a file by copying it with a .bak extension."
+    return 1
+  fi
+
+  if [ ! -f "$1" ]; then
+    echo "Error: File '$1' does not exist."
+    return 1
+  fi
+
+  cp -- "$1" "$1.bak" && echo "Backup of '$1' created successfully as '$1.bak'"
+}
+
+# ** Show file size in human-readable format **
+
+fsize() {
+  if [ $# -eq 0 ]; then
+    echo "Usage: fsize <file1> [file2 ...]"
+    echo "Show file size in human-readable format."
+    return 1
+  fi
+
+  for file in "$@"; do
+    if [ -e "$file" ]; then
+      size=$(du -h "$file" | awk '{print $1}')
+      echo "$file: $size"
+    else
+      echo "fsize: '$file' not found" >&2
+    fi
+  done
+}
+
+# ** Create directory and parent directories if they don't exist **
+
+mkdirp() {
+  if [ -z "$1" ]; then
+    echo "Usage: mkdirp <directory_path>"
+    echo "Create directory and parent directories if they don't exist."
+    return 1
+  fi
+
+  mkdir -p "$1" && echo "Directory created: $1"
+}
+
+# ** Remove files or directories recursively **
+
+# Enable tab completion for rmf
+if [ -n "$ZSH_VERSION" ]; then
+  if typeset -f compdef >/dev/null 2>&1; then
+    compdef rmf=rm
+  fi
+elif [ -n "$BASH_VERSION" ]; then
+  if type complete >/dev/null 2>&1 && complete -p rm >/dev/null 2>&1; then
+    complete -o default -o filenames -c rmf
+  fi
+fi
+
+rmf() {
+  if command -v apt >/dev/null 2>&1 && apt --version >/dev/null 2>&1; then
+    sudo rm -rf "$@" && echo "Successfully removed $*"
+  else
+    rm -rf "$@" && echo "Successfully removed $*"
+  fi
+}
+
+# ================================
+# Navigation
+# ================================
+
+# ** Create and cd into a directory **
+
+mkcd() {
+  mkdir -p "$1" && cd "$1"
+}
+
+# ** Go up N directories (default 1) **
+up() {
+  if [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
+    echo "Usage: up [N]"
+    echo "Go up N directories (default 1)."
+    return 0
+  fi
+
+  local d="${1:-1}"
+
+  if ! [[ "$d" =~ ^[0-9]+$ ]]; then
+    echo "up: argument must be a non-negative integer" >&2
+    return 1
+  fi
+
+  while [ "$d" -gt 0 ]; do
+    cd .. || return
+    d=$((d - 1))
+  done
+}
+
+# ================================
+# Networking & Connectivity
+# ================================
+
+# ** Display all listening TCP/UDP ports with processes, or check if a specific TCP port is open **
+
+check_ports() {
+  show_usage() {
+    echo "Usage:"
+    echo "  check_ports              List all listening TCP and UDP ports with associated process info."
+    echo "  check_ports <port>       Check if a specific local TCP port is open."
+    echo "  check_ports -h | --help  Show this help message."
+  }
+
+  # Help flag
+  if [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
+    show_usage
+    return 0
+  fi
+
+  # Check a specific port
+  if [ $# -eq 1 ]; then
+    port="$1"
+    if ! [[ "$port" =~ ^[0-9]+$ ]]; then
+      echo "Error: '$port' is not a valid port number." >&2
+      show_usage
+      return 1
+    fi
+
+    if nc -zv 127.0.0.1 "$port" 2>&1 | grep -q succeeded; then
+      echo "Port $port is open."
+    else
+      echo "Port $port is closed or not listening."
+    fi
+    return
+  elif [ $# -gt 1 ]; then
+    echo "Error: too many arguments." >&2
+    show_usage
+    return 1
+  fi
+
+  # List all listening ports
+  if ! command -v lsof >/dev/null 2>&1; then
+    echo "Error: lsof not found." >&2
+    return 1
+  fi
+
+  echo -e "PROTO\tPORT\tPID/PROCESS"
+
+  lsof -nP -iTCP -sTCP:LISTEN -iUDP 2>/dev/null |
+    awk '
+      NR == 1 { next }
+
+      {
+        proto = $8
+        split($9, addr, ":")
+        port = addr[length(addr)]
+        if (port == "") port = "*"
+
+        key = proto "_" port
+        proc = $2 "/" $1
+
+        if (seen[key, proc] == 0) {
+          proc_list[key] = (proc_list[key] == "" ? proc : proc_list[key] " | " proc)
+          seen[key, proc] = 1
+        }
+      }
+
+      END {
+        n = 0
+        for (k in proc_list) keys[n++] = k
+
+        for (i = 0; i < n - 1; i++) {
+          for (j = i + 1; j < n; j++) {
+            split(keys[i], a, "_")
+            split(keys[j], b, "_")
+            pa = (a[2] == "*" ? 0 : a[2] + 0)
+            pb = (b[2] == "*" ? 0 : b[2] + 0)
+            if ((a[1] > b[1]) || (a[1] == b[1] && pa > pb)) {
+              tmp = keys[i]; keys[i] = keys[j]; keys[j] = tmp
+            }
+          }
+        }
+
+        for (i = 0; i < n; i++) {
+          split(keys[i], parts, "_")
+          print parts[1] "\t" parts[2] "\t" proc_list[keys[i]]
+        }
+      }
+    '
+}
+
+# ** Ping a host with optional count **
+
+ping_test() {
+  if [ -z "$1" ]; then
+    echo "Usage: pingtest <host> [count]"
+    echo "Ping the specified host with an optional count (default 4)."
+    return 1
+  fi
+  ping -c "${2:-4}" "$1"
+}
+
+# ** Fetch and display public IPv4 or IPv6 address **
+
+pubip() {
+  copy_to_clipboard() {
+    if command -v pbcopy >/dev/null 2>&1; then
+      echo -n "$1" | pbcopy
+    else
+      echo "No clipboard tool found." >&2
+      return 1
+    fi
+  }
+
+  local ip4 ip6
+  case "$1" in
+    4)
+      ip4=$(curl -4 -s ifconfig.me)
+      echo "IPv4: $ip4"
+      copy_to_clipboard "$ip4" && echo "Copied to clipboard."
+      ;;
+    6)
+      ip6=$(curl -6 -s ifconfig.me)
+      echo "IPv6: $ip6"
+      copy_to_clipboard "$ip6" && echo "Copied to clipboard."
+      ;;
+    "")
+      echo "IPv4: $(curl -4 -s ifconfig.me)"
+      echo "IPv6: $(curl -6 -s ifconfig.me)"
+      ;;
+    *)
+      echo "Usage: pubip [4|6]"
+      return 1
+      ;;
+  esac
+}
+
+# ================================
+# Package Management
+# ================================
+
+# ** Install a package using apt (Linux) or brew (macOS) **
+
+install() {
+  if [ -z "$1" ]; then
+    echo "Usage: install <package>"
+    return 1
+  fi
+
+  if command -v apt >/dev/null 2>&1 && apt --version >/dev/null 2>&1; then
+    echo "Installing package '$1' via apt..."
+    sudo apt install -y "$1"
+
+  elif command -v brew >/dev/null 2>&1 && brew --version >/dev/null 2>&1; then
+    echo "Installing package '$1' via brew..."
+    brew install "$1"
+
+  else
+    echo "No known package manager found or unsupported environment."
+    return 1
+  fi
+}
+
+# ** Remove a package using apt (Linux) or brew (macOS) **
+
+remove() {
+  if [ -z "$1" ]; then
+    echo "Usage: remove <package>"
+    return 1
+  fi
+
+  if command -v apt >/dev/null 2>&1 && apt --version >/dev/null 2>&1; then
+    echo "Removing package '$1' via apt..."
+    sudo apt remove -y "$1"
+
+  elif command -v brew >/dev/null 2>&1 && brew --version >/dev/null 2>&1; then
+    echo "Removing package '$1' via brew..."
+    brew uninstall "$1"
+
+  else
+    echo "No known package manager found or unsupported environment."
+    return 1
+  fi
+}
+
+# ** Update system packages and software on Linux (APT) or macOS (Homebrew), including macOS updates and apps **
+
+update() {
+  if command -v apt >/dev/null 2>&1 && apt --version >/dev/null 2>&1; then
+    echo "Updating APT packages..."
+    sudo apt update && sudo apt upgrade -y
+
+  elif command -v brew >/dev/null 2>&1 && brew --version >/dev/null 2>&1; then
+    echo "Updating Homebrew and macOS software..."
+    brew update
+
+    echo "==> Upgrading all formulae and casks..."
+    brew upgrade
+
+    echo "==> Upgrading installed casks individually..."
+    brew list --cask | while IFS= read -r cask; do
+      if [ -n "$cask" ]; then
+        echo "Upgrading $cask..."
+        brew upgrade --cask "$cask" || echo "Failed to upgrade $cask"
+      fi
+    done
+
+    echo "==> Cleaning up old versions..."
+    brew cleanup
+
+    if command -v defaultbrowser >/dev/null 2>&1; then
+      echo "==> Setting LibreWolf as default browser..."
+      defaultbrowser librewolf || echo "Failed to set LibreWolf as default browser"
+    else
+      echo "Note: 'defaultbrowser' command not found, skipping default browser set"
+    fi
+
+    echo "==> Brew update complete."
+    omz update
+    sudo softwareupdate -ia
+    mas upgrade
+
+  else
+    echo "No known supported package manager found."
+    return 1
+  fi
+}
+
+# ================================
+# Processes & System Monitoring
+# ================================
+
+# ** Run htop if available, otherwise fallback to top for CPU monitoring **
+# Displays a one-time install hint when htop is missing
+# To show hint again, run: `unset _HTOP_WARNED``
+
+cpu() {
+  if command -v htop >/dev/null 2>&1; then
+    htop
+  else
+    if [ -z "$_HTOP_WARNED" ]; then
+      printf "Note: 'htop' not found, using 'top' instead.\n"
+
+      if command -v apt >/dev/null 2>&1 && apt --version >/dev/null 2>&1; then
+        printf "Install it with: sudo apt install htop -y\n\n"
+      elif command -v brew >/dev/null 2>&1 && brew --version >/dev/null 2>&1; then
+        printf "Install it with: brew install htop\n\n"
+      else
+        printf "Install 'htop' using your system's package manager.\n\n"
+      fi
+
+      export _HTOP_WARNED=1
+    fi
+
+    top
+  fi
+}
+
+# ** Display top 10 processes by memory usage with formatted output **
+
+memtop10() {
+  printf "%-6s %-15s %6s %8s %s\n" "PID" "USER" "%MEM" "RSS(MB)" "COMMAND"
+  ps -axo pid,user,%mem,rss,comm \
+    | sort -nrk 3 \
+    | head -n 10 \
+    | awk '{
+        rss_mb = $4 / 1024;
+        user = $2;
+        if (length(user) > 15) user = substr(user,1,12) "...";
+        cmd = $5;
+        for (i=6; i<=NF; i++) cmd = cmd " " $i;
+        # Extract basename from full path
+        n = split(cmd, parts, "/");
+        cmd = parts[n];
+        printf "%-6s %-15s %6s %8.2f %s\n", $1, user, $3, rss_mb, cmd;
+      }'
+}
+
+# ** Display disk usage for primary volume **
+
+space() {
+  if command -v apt >/dev/null 2>&1 && apt --version >/dev/null 2>&1; then
+    # Linux: Show disk usage of /dev/sda
+    printf "%-15s %-7s %-7s %-7s %-6s %s\n" "Filesystem" "Size" "Used" "Avail" "Use%" "Mounted on"
+    df -h | grep "^/dev/sda" | awk '{printf "%-15s %-7s %-7s %-7s %-6s %s\n", $1, $2, $3, $4, $5, $6}'
+  elif command -v brew >/dev/null 2>&1 && brew --version >/dev/null 2>&1; then
+    # macOS: Show disk usage of root volume (mounted on /)
+    printf "%-15s %-7s %-7s %-7s %-6s %s\n" "Filesystem" "Size" "Used" "Avail" "Use%" "Mounted on"
+    df -h | grep " /$" | awk '{printf "%-15s %-7s %-7s %-7s %-6s %s\n", $1, $2, $3, $4, $5, $9}'
+  else
+    echo "Unsupported system or package manager not found." >&2
+    return 1
+  fi
+}
+
+# ================================
+# Operating System
+# ================================
+
+# ** Show OS version **
+
+osv() {
+  if command -v apt >/dev/null 2>&1 && apt --version >/dev/null 2>&1; then
+    if [ -f /etc/os-release ]; then
+      . /etc/os-release
+      echo "$PRETTY_NAME"
+    else
+      lsb_release -d 2>/dev/null | cut -f2- || uname -a
+    fi
+
+  elif command -v brew >/dev/null 2>&1 && brew --version >/dev/null 2>&1; then
+    echo "macOS $(sw_vers -productVersion)"
+
+  else
+    echo "Unsupported or unknown environment."
+    return 1
+  fi
+}
+
+reboot() {
+  if command -v apt >/dev/null 2>&1 && apt --version >/dev/null 2>&1; then
+    echo "Rebooting system..."
+    sudo reboot
+  elif command -v brew >/dev/null 2>&1 && brew --version >/dev/null 2>&1; then
+    echo "Rebooting system..."
+    sudo shutdown -r now
+  else
+    echo "Unsupported system or package manager not found." >&2
+    return 1
+  fi
+}
+
+# ================================
+# Terminal
+# ================================
+
+# ** Wrapper for 'cat': uses 'bat' if available; otherwise falls back to 'cat' **
+# Displays a one-time install hint when 'bat' is missing
+# To show hint again, run: `unset _BAT_WARNED``
+
+cat() {
+  if command -v bat >/dev/null 2>&1; then
+    bat "$@"
+  elif command -v batcat >/dev/null 2>&1; then
+    batcat "$@"
+  else
+    if [ -z "$_BAT_WARNED" ]; then
+      printf "Note: 'bat' not found, using 'cat' instead.\n"
+
+      if command -v apt >/dev/null 2>&1 && apt --version >/dev/null 2>&1; then
+        printf "Install it with: sudo apt install bat -y\n"
+        printf "If installed as 'batcat', create a symlink:\n"
+        printf "sudo ln -s \$(which batcat) /usr/local/bin/bat\n\n"
+      elif command -v brew >/dev/null 2>&1 && brew --version >/dev/null 2>&1; then
+        printf "Install it with: brew install bat\n\n"
+      else
+        printf "Visit https://github.com/sharkdp/bat for installation instructions\n\n"
+      fi
+
+      export _BAT_WARNED=1
+    fi
+
+    command cat "$@"
+  fi
+}
+
+# Clear shell history
+
+clearhis() {
+  if [ -n "$BASH_VERSION" ]; then
+    read -p "Are you sure you want to clear the history? [y/N] " reply
+    if [[ "$reply" =~ ^[Yy]$ ]]; then
+      history -c
+      echo "History cleared."
+    else
+      echo "Aborted."
+    fi
+  else
+    # Assume zsh or other shells: no prompt, just clear
+    history -c
+    echo "History cleared."
+  fi
+}
+
+# ** Open shell config **
+
+shellconf() {
+  if [ -n "$ZSH_VERSION" ]; then
+    vim ~/.zshrc
+  elif [ -n "$BASH_VERSION" ]; then
+    vim ~/.bashrc
+  else
+    echo "Unsupported shell. Cannot open config."
+    return 1
+  fi
+}
+
+# ** Search shell history for commands matching a pattern **
+
+hisg() {
+  if [ -z "$1" ]; then
+    echo "Usage: hisg <pattern>"
+    echo "Search shell history for commands matching a pattern."
+    return 1
+  fi
+  if ! history | grep --color=auto -q "$*"; then
+    echo "No matches found for pattern: $*"
+    return 1
+  fi
+  history | grep --color=auto "$*"
+}
+
+# ** Reload config **
+
+reload() {
+  if [ -n "$ZSH_VERSION" ]; then
+    source ~/.zshrc && echo "Zsh configuration reloaded successfully."
+  elif [ -n "$BASH_VERSION" ]; then
+    source ~/.bashrc && echo "Bash configuration reloaded successfully."
+  else
+    echo "Unsupported shell. Reload not performed."
+    return 1
+  fi
+}

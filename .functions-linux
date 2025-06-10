@@ -1,0 +1,79 @@
+# ================================
+# Development & Utilities
+# ================================
+
+# ** Disable NGINX site, test config and reload NGINX **
+
+nginx_disable_site() {
+  if ! command -v apt >/dev/null 2>&1 || ! apt --version >/dev/null 2>&1; then
+    echo "This function supports Linux systems with APT only." >&2
+    return 1
+  fi
+
+  if [ -z "$1" ]; then
+    echo "Usage: nginx_disable_site <site_name>" >&2
+    return 1
+  fi
+
+  local site_name="$1"
+  local sites_enabled="/etc/nginx/sites-enabled"
+  local dest="${sites_enabled}/${site_name}"
+
+  if [ ! -L "$dest" ]; then
+    echo "Site '$site_name' is not enabled or symlink not found." >&2
+    return 1
+  fi
+
+  sudo rm "$dest" && echo "Site '$site_name' disabled."
+
+  echo "Testing NGINX configuration..."
+  if sudo nginx -t; then
+    echo "Reloading NGINX..."
+    sudo systemctl reload nginx && echo "NGINX reloaded successfully."
+  else
+    echo "NGINX configuration test failed after disabling site. Please check manually."
+    return 1
+  fi
+}
+
+# ** Enable NGINX site, test config and reload NGINX **
+
+nginx_enable_site() {
+  if ! command -v apt >/dev/null 2>&1 || ! apt --version >/dev/null 2>&1; then
+    echo "This function supports Linux systems with APT only." >&2
+    return 1
+  fi
+
+  if [ -z "$1" ]; then
+    echo "Usage: nginx_enable_site <site_name>" >&2
+    return 1
+  fi
+
+  local site_name="$1"
+  local sites_available="/etc/nginx/sites-available"
+  local sites_enabled="/etc/nginx/sites-enabled"
+  local src="${sites_available}/${site_name}"
+  local dest="${sites_enabled}/${site_name}"
+
+  if [ ! -f "$src" ]; then
+    echo "Site config '$src' does not exist." >&2
+    return 1
+  fi
+
+  if [ -e "$dest" ]; then
+    echo "Site '$site_name' is already enabled." >&2
+    return 0
+  fi
+
+  sudo ln -s "$src" "$dest" && echo "Site '$site_name' enabled."
+
+  echo "Testing NGINX configuration..."
+  if sudo nginx -t; then
+    echo "Reloading NGINX..."
+    sudo systemctl reload nginx && echo "NGINX reloaded successfully."
+  else
+    echo "NGINX configuration test failed. Removing symlink."
+    sudo rm "$dest"
+    return 1
+  fi
+}

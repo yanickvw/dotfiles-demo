@@ -1,0 +1,45 @@
+# ================================
+# Development & Utilities
+# ================================
+
+alias github_test='ssh -T git@github.com'   # Test GitHub SSH connection
+
+# ================================
+# File Operations
+# ================================
+
+alias cp='cp -i'      # Copy files interactively (prompt before overwrite)
+alias ll='ls -l'      # List files in long format
+alias la='ls -lah'    # List all files with details (including hidden files)
+alias mv='mv -i'      # Move files interactively (prompt before overwrite)
+alias rm='rm -i'      # Remove files interactively (prompt before delete)
+
+# ================================
+# Navigation
+# ================================
+
+alias ..='cd ..'           # Move up one directory
+alias ...='cd ../..'       # Move up two directories
+alias ....='cd ../../..'   # Move up three directories
+
+# ================================
+# Networking & Connectivity
+# ================================
+
+# Ping Google 4 times
+alias pingg='ping -c 4 google.com'
+
+# Internet Speed Test
+alias speedtest='curl -s https://raw.githubusercontent.com/sivel/speedtest-cli/master/speedtest.py | python3 -'
+
+# ================================
+# Terminal
+# ================================
+
+alias c='clear'                         # Clear terminal screen
+alias h='clear && cd'                   # Clear screen and go to home directory
+alias his='history'                     # Show command history
+alias his10='history | tail -n 10'      # Show last 10 commands from history
+alias now='date +"%Y-%m-%d %H:%M:%S"'   # Show current date and time
+alias please='sudo $(fc -ln -1)'        # Re-run last command with sudo
+alias x='exit'                          # Exit the shell

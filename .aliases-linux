@@ -1,0 +1,72 @@
+# ================================
+# Environment Variables
+# ================================
+
+# PHP version
+PHP_VER="x.x"
+
+# Site directory
+SITE_DIR="/var/www/example.com"   # Set root directory for example.com
+
+# ================================
+# Development & Utilities
+# ================================
+
+# Cron
+alias cron_log_backup_daily='sudo tail -f /var/log/backup-daily.log | ccze'     # View cron log (daily backup)
+alias cron_log_backup_weekly='sudo tail -f /var/log/backup-weekly.log | ccze'   # View cron log (weekly backup)
+
+# Fail2ban
+alias f2b_log='sudo tail -f /var/log/fail2ban.log| ccze'   # View Fail2ban log
+alias f2b_conf='sudo vim /etc/fail2ban/jail.local'         # Edit Fail2ban configuration
+alias f2b_jail='sudo fail2ban-client status'               # Show Fail2ban jail status
+alias f2b_restart='sudo systemctl restart fail2ban'        # Restart Fail2ban
+
+# NGINX
+alias nginx_conf='sudo vim /etc/nginx/nginx.conf'                         # Edit main NGINX configuration
+alias nginx_restart='sudo nginx -t && sudo systemctl restart nginx'       # Test and restart NGINX
+alias nginx_status='sudo systemctl status nginx'                          # Show NGINX status
+alias nginx_log_access='sudo tail -f /var/log/nginx/access.log | ccze'    # View NGINX access log
+alias nginx_log_error='sudo tail -f /var/log/nginx/error.log | ccze'      # View NGINX error log
+
+# Fix ownership and permissions for web root
+alias nginx_perms='sudo chown -R <user>:<group> /var/www/ && sudo find /var/www/ -type f -exec chmod 644 {} \; && sudo find /var/www/ -type d -exec chmod 755 {} \;'
+alias nginx_sites='ls -l /etc/nginx/sites-available'         # List available NGINX site configs
+alias nginx_sites_enabled='ls -l /etc/nginx/sites-enabled'   # List enabled NGINX site configs
+
+# PHP
+alias php_conf="sudo vim /etc/php/${PHP_VER}/fpm/php.ini"               # Edit PHP configuration
+alias phpfpm_conf="sudo vim /etc/php/${PHP_VER}/fpm/php-fpm.conf"       # Edit PHP-FPM configuration
+alias phpfpm_restart="sudo systemctl restart php${PHP_VER}-fpm"         # Restart PHP-FPM
+alias phpfpm_status="sudo systemctl status php${PHP_VER}-fpm"           # Show PHP-FPM status
+alias phpfpm_log="sudo tail -f /var/log/php${PHP_VER}-fpm.log | ccze"   # View PHP-FPM log
+
+# SSH
+alias sshlog='sudo tail -f /var/log/auth.log | ccze'   # View SSH log
+
+# Unattended-Upgrades
+alias uu_log='sudo tail -f /var/log/unattended-upgrades/unattended-upgrades.log | ccze'    # View Unattended Upgrades log
+
+# UFW
+alias ufw_conf='sudo ufw status verbose'                # Show UFW status
+alias ufw_disable='sudo ufw disable'                    # Disable UFW
+alias ufw_enable='sudo ufw enable'                      # Enable UFW
+alias ufw_log='sudo tail -f /var/log/ufw.log | ccze'    # View UFW log
+alias ufw_restart='sudo ufw reload'                     # Restart UFW
+
+# ================================
+# Operating System
+# ================================
+
+alias os_log='sudo tail -f /var/log/syslog | ccze'    # View system log
+
+# ================================
+# Website Management
+# ================================
+
+# Site
+alias site_clear_cache="rmf ${SITE_DIR}/public_html/site/cache/*"   # Clear site cache
+alias site_conf='sudo vim /etc/nginx/sites-available/example.com'   # Edit NGINX config for example.com
+alias site_perms="sudo chown -R <user>:<group> ${SITE_DIR}"         # Set permissions on site directory
+alias site_perms_user="sudo chown -R $USER ${SITE_DIR}"             # Set user ownership on site directory
+alias site_root="cd ${SITE_DIR}/public_html/"                       # Navigate to site public HTML root

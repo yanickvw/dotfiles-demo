@@ -1,0 +1,70 @@
+# ================================
+# Environment Variables
+# ================================
+
+SITE_DIR="<path/to/project>"   # Set root directory of project
+
+# ================================
+# Development & Utilities
+# ================================
+
+alias admin='code <path/to/directory>'   # Open admin directory in VS Code
+alias conf_backup='<path/to/script>'     # Run configuration backup script
+alias p10kconf='vim ~/.p10k.zsh'         # Edit Powerlevel10k config
+alias wttr='curl wttr.in/<location>'     # Weather info for <location>
+
+# Object Storage
+
+alias admin_pull='<path/to/script>'      # Run admin pull script
+alias admin_push='<path/to/script>'      # Run admin push script
+
+# ================================
+# File Operations
+# ================================
+
+alias finder='open .'   # Open current directory in file manager
+
+# ================================
+# Networking & Connectivity
+# ================================
+
+alias pubip4='pubip 4'   # Get and copy public IPv4 address (function)
+alias pubip6='pubip 6'   # Get and copy public IPv6 address (function)
+
+# ================================
+# Operating System
+# ================================
+
+alias poweroff='sudo shutdown -h now'   # Power off system
+alias readme='code <path/to/file>'      # Open file in VS Code
+alias sleep='pmset sleepnow'            # Put system to sleep
+
+# ================================
+# Website Launchers
+# ================================
+
+alias cf='open https://dash.cloudflare.com/login'   # Open Cloudflare
+alias gpt='open https://chat.openai.com/'           # Open ChatGPT
+alias kr='open https://krea.ai/'                    # Open Krea AI
+alias li='open https://login.linode.com/'           # Open Linode
+alias pm='open https://account.proton.me/mail'      # Open Proton Mail
+
+# Search
+
+alias q='<path/to/script>'     # Search query browser (general)
+alias qi='<path/to/script>'    # Search query browser (images)
+alias qv='<path/to/script>'    # Search query browser (videos)
+alias qyt='<path/to/script>'   # Search query YouTube
+
+# ================================
+# Website Management
+# ================================
+
+# Site
+alias site='open https://example.com/'                    # Open homepage
+alias site_admin='open https://example.com/login'         # Open admin login
+alias site_backup="${SITE_DIR}/<path/to/script>"          # Run backup script
+alias site_dev='open https://example.test/'               # Open development site
+alias site_dev_admin='open https://example.test/login'    # Open development site admin login
+alias site_edit="code ${SITE_DIR}/"                       # Open project in VS Code
+alias site_push="${SITE_DIR}/<path/to/script>"            # Run push script

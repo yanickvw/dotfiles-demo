@@ -1,0 +1,53 @@
+# Backup files
+*.backup
+*.bak
+*.swp
+*.swo
+*.swx
+*~
+
+# Editor/project-specific
+*.code-workspace
+.idea/
+.prettierignore
+.prettierrc
+.project
+.vscode/
+.workspace
+
+# Git-related
+.git/
+.gitignore~
+
+# Logs and temp files
+*.log
+*.tmp
+*.un~
+
+# OS/system-specific
+.DS_Store
+.LSOverride
+.Spotlight-V100
+.Trashes
+AppleDouble
+Icon?
+Thumbs.db
+desktop.ini
+ehthumbs.db
+fseventsd
+nfs*
+
+# Shell
+.bashrc
+.bash_history
+.zsh_history
+.zshrc
+
+# Secrets and credentials
+.env
+*.crt
+*.enc
+*.gpg
+*.key
+*.pem
+*.secrets
